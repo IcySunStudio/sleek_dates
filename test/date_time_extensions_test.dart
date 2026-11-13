@@ -15,6 +15,14 @@ void main() {
     });
   });
 
+  group('toTime', () {
+    test('drops the date and the milliseconds', () {
+      expect(DateTime(2026, 3, 21, 7, 5, 30, 999).toTime(), Time(7, 5, 30));
+      expect(DateTime.utc(2026, 3, 21, 23, 59, 59).toTime(), Time(23, 59, 59));
+      expect(DateTime(2026, 3, 21).toTime(), Time.midnight);
+    });
+  });
+
   group('same year / month / day', () {
     final morning = DateTime(2026, 3, 21, 8);
     final evening = DateTime(2026, 3, 21, 22, 30);

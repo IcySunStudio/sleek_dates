@@ -289,6 +289,33 @@ void main() {
     });
   });
 
+  group('toDateTime', () {
+    test('defaults to local midnight', () {
+      final dateTime = Date(2026, 3, 21).toDateTime();
+      expect(dateTime, DateTime(2026, 3, 21));
+      expect(dateTime.isUtc, isFalse);
+    });
+
+    test('applies the time', () {
+      expect(Date(2026, 3, 21).toDateTime(time: Time(18, 30)), DateTime(2026, 3, 21, 18, 30));
+      expect(Date(2026, 3, 21).toDateTime(time: Time(7, 5, 30)), DateTime(2026, 3, 21, 7, 5, 30));
+    });
+
+    test('can be in UTC', () {
+      final dateTime = Date(2026, 3, 21).toDateTime(time: Time(18, 30), utc: true);
+      expect(dateTime, DateTime.utc(2026, 3, 21, 18, 30));
+      expect(dateTime.isUtc, isTrue);
+    });
+
+    test('round-trips with toDate and toTime', () {
+      final date = Date(2026, 3, 21);
+      final time = Time(18, 30, 15);
+      final dateTime = date.toDateTime(time: time);
+      expect(dateTime.toDate(), date);
+      expect(dateTime.toTime(), time);
+    });
+  });
+
   group('isYesterday', () {
     test('is true only for the day before today', () {
       final today = Date.today();

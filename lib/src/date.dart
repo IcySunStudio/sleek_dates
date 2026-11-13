@@ -1,3 +1,4 @@
+import 'time.dart';
 import 'weekday.dart';
 
 /// A calendar date (year, month, day), without any time of day or time zone.
@@ -187,6 +188,13 @@ final class Date implements Comparable<Date> {
 
   /// The first day of the month preceding this date's month.
   Date get firstDayOfPreviousMonth => firstDayOfMonth.addMonths(-1);
+
+  /// This date at [time] (midnight by default), as a [DateTime] in the local time zone, or in UTC if [utc] is true.
+  ///
+  /// In the local time zone, a [time] skipped by a daylight saving time change (e.g. 02:30 on the day clocks
+  /// go forward) is shifted forward by [DateTime], as it does for any local [DateTime].
+  DateTime toDateTime({Time time = Time.midnight, bool utc = false}) =>
+      utc ? DateTime.utc(year, month, day, time.hour, time.minute, time.second) : DateTime(year, month, day, time.hour, time.minute, time.second);
 
   /// The first day of this date's week, which starts on [start] (Monday by default).
   ///

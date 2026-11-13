@@ -1,4 +1,5 @@
 import 'date.dart';
+import 'time.dart';
 
 /// Date-related helpers for [DateTime].
 ///
@@ -10,6 +11,11 @@ extension SleekDateTime on DateTime {
   ///
   /// No time zone conversion is made, see [Date.fromDateTime].
   Date toDate() => Date.fromDateTime(this);
+
+  /// The time of day of this [DateTime], without date.
+  ///
+  /// No time zone conversion is made, see [Time.fromDateTime].
+  Time toTime() => Time.fromDateTime(this);
 
   /// Whether [other] is in the same year as this.
   bool isAtSameYearAs(DateTime other) => year == other.year;

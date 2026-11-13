@@ -4,4 +4,5 @@ library;
 
 export 'src/date.dart';
 export 'src/date_time_extensions.dart';
+export 'src/time.dart';
 export 'src/weekday.dart';
