@@ -103,6 +103,13 @@ void main() {
       expect(Time.tryParse('18:30'), Time(18, 30));
     });
 
+    test('accepts and truncates fractional seconds', () {
+      expect(Time.parse('07:05:30.999'), Time(7, 5, 30));
+      expect(Time.parse('07:05:00.000'), Time(7, 5));
+      expect(Time.parse('23:59:59.123456789'), Time(23, 59, 59));
+      expect(Time.tryParse('07:05:30.5'), Time(7, 5, 30));
+    });
+
     test('rejects other formats', () {
       const invalid = [
         '',
@@ -115,7 +122,10 @@ void main() {
         ' 07:05',
         '07:05 ',
         '07:05\n',
-        '07:05:00.000',
+        '07:05.5',
+        '07:05:00.',
+        '07:05:00,5',
+        '07:05:00.5Z',
         '07:05:00Z',
         'T07:05',
         'ab:cd',
@@ -145,6 +155,16 @@ void main() {
     test('toString includes seconds when they are not 0', () {
       expect(Time(7, 5, 30).toString(), '07:05:30');
       expect(Time(0, 0, 1).toString(), '00:00:01');
+    });
+
+    test('toJson always includes seconds', () {
+      expect(Time(7, 5).toJson(), '07:05:00');
+      expect(Time(0, 0).toJson(), '00:00:00');
+      expect(Time(7, 5, 30).toJson(), '07:05:30');
+    });
+
+    test('fromJson also accepts times without seconds', () {
+      expect(Time.fromJson('07:05'), Time(7, 5));
     });
 
     test('toJson and fromJson round-trip every minute of the day', () {

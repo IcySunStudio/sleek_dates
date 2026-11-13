@@ -42,6 +42,8 @@ final class Time implements Comparable<Time> {
 
   /// Parses a time in the strict ISO 8601 format `HH:mm` or `HH:mm:ss` (e.g. `07:05` or `07:05:30`).
   ///
+  /// Fractional seconds (e.g. `07:05:30.250`) are accepted and truncated, as [Time] has a one-second precision.
+  ///
   /// Throws a [FormatException] if [source] is not in this format, or if the
   /// time is not valid (e.g. `24:00`). See [tryParse] for a variant returning `null`.
   static Time parse(String source) {
@@ -59,7 +61,7 @@ final class Time implements Comparable<Time> {
     return match == null ? null : _fromMatch(match);
   }
 
-  /// Creates a time from its [toJson] representation (`HH:mm` or `HH:mm:ss`).
+  /// Creates a time from its [toJson] representation (`HH:mm:ss`), or from any other format [parse] accepts.
   ///
   /// Throws a [FormatException] if [json] is not a valid time.
   factory Time.fromJson(String json) => Time.parse(json);
@@ -72,7 +74,7 @@ final class Time implements Comparable<Time> {
 
   static const _secondsPerDay = Duration.secondsPerDay;
 
-  static final _isoFormat = RegExp(r'^(\d{2}):(\d{2})(?::(\d{2}))?$');
+  static final _isoFormat = RegExp(r'^(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?$');
 
   static Time? _fromMatch(RegExpMatch match) => tryCreate(
         int.parse(match.group(1)!),
@@ -107,12 +109,16 @@ final class Time implements Comparable<Time> {
   /// Whether this time is after or the same as [other].
   bool isAfterOrSame(Time other) => compareTo(other) >= 0;
 
+  /// Same as [isBefore].
   bool operator <(Time other) => isBefore(other);
 
+  /// Same as [isBeforeOrSame].
   bool operator <=(Time other) => isBeforeOrSame(other);
 
+  /// Same as [isAfter].
   bool operator >(Time other) => isAfter(other);
 
+  /// Same as [isAfterOrSame].
   bool operator >=(Time other) => isAfterOrSame(other);
 
   @override
@@ -127,10 +133,14 @@ final class Time implements Comparable<Time> {
   /// The time in the ISO 8601 format `HH:mm`, or `HH:mm:ss` if [second] is not 0 (e.g. `07:05` or `07:05:30`).
   @override
   String toString() {
-    final hourAndMinute = '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
-    return second == 0 ? hourAndMinute : '$hourAndMinute:${second.toString().padLeft(2, '0')}';
+    final hourAndMinute = '${_twoDigits(hour)}:${_twoDigits(minute)}';
+    return second == 0 ? hourAndMinute : '$hourAndMinute:${_twoDigits(second)}';
   }
 
-  /// The JSON representation of this time: the same string as [toString].
-  String toJson() => toString();
+  /// The JSON representation of this time, in the ISO 8601 format `HH:mm:ss` (e.g. `07:05:00`).
+  ///
+  /// Unlike [toString], seconds are always included, as required by RFC 3339 `partial-time` (`format: time-local` in OpenAPI).
+  String toJson() => '${_twoDigits(hour)}:${_twoDigits(minute)}:${_twoDigits(second)}';
+
+  static String _twoDigits(int value) => value.toString().padLeft(2, '0');
 }

@@ -4,7 +4,9 @@ import 'weekday.dart';
 /// A calendar date (year, month, day), without any time of day or time zone.
 ///
 /// Instances are immutable and always represent a date that exists
-/// (e.g. February 30th is rejected). Years from 1 to 9999 are supported.
+/// (e.g. February 30th is rejected). Years from 1 to 9999 are supported: any
+/// operation whose result would fall out of this range (e.g. `Date(9999, 12, 31).addDays(1)`)
+/// throws an [ArgumentError].
 ///
 /// All calendar computations rely on [DateTime.utc], so they never suffer from
 /// daylight saving time changes.
@@ -45,9 +47,9 @@ final class Date implements Comparable<Date> {
   /// Throws an [ArgumentError] if the resulting year is out of the supported range (years 1 to 9999).
   factory Date.rollover(int year, int month, int day) {
     // DateTime silently wraps around when given values far beyond its supported range, so reject them upfront.
-    if (year.abs() > _maxRolloverYear || month.abs() > _maxRolloverMonth || day.abs() > _maxRolloverDay) {
-      throw ArgumentError('Value too large: year $year, month $month, day $day');
-    }
+    RangeError.checkValueInInterval(year, -_maxRolloverYear, _maxRolloverYear, 'year');
+    RangeError.checkValueInInterval(month, -_maxRolloverMonth, _maxRolloverMonth, 'month');
+    RangeError.checkValueInInterval(day, -_maxRolloverDay, _maxRolloverDay, 'day');
     return Date.fromDateTime(DateTime.utc(year, month, day));
   }
 
@@ -65,6 +67,11 @@ final class Date implements Comparable<Date> {
 
   /// Creates the current date in UTC.
   factory Date.todayUtc() => Date.fromDateTime(DateTime.now().toUtc());
+
+  /// Creates a date from its [epochDay]: the number of days since 1970-01-01 (negative before that).
+  ///
+  /// Throws an [ArgumentError] if the resulting year is out of the supported range (years 1 to 9999).
+  factory Date.fromEpochDay(int epochDay) => const Date._(1970, 1, 1).addDays(epochDay);
 
   /// Parses a date in the strict ISO 8601 format `yyyy-MM-dd` (e.g. `2026-03-21`).
   ///
@@ -141,10 +148,19 @@ final class Date implements Comparable<Date> {
   /// Whether this date is yesterday, in the local time zone.
   bool get isYesterday => Date.today().daysSince(this) == 1;
 
+  /// Whether this date is tomorrow, in the local time zone.
+  bool get isTomorrow => daysSince(Date.today()) == 1;
+
   /// Returns this date plus [days] days (minus if negative).
   ///
   /// Throws an [ArgumentError] if the resulting year is out of the supported range (years 1 to 9999).
-  Date addDays(int days) => days == 0 ? this : Date.rollover(year, month, day + days);
+  Date addDays(int days) {
+    if (days == 0) return this;
+
+    // Checked before the addition, which could overflow.
+    RangeError.checkValueInInterval(days, -_maxRolloverDay, _maxRolloverDay, 'days');
+    return Date.rollover(year, month, day + days);
+  }
 
   /// Returns this date plus [months] months (minus if negative).
   ///
@@ -155,6 +171,8 @@ final class Date implements Comparable<Date> {
   Date addMonths(int months) {
     if (months == 0) return this;
 
+    // Checked before the addition, which could overflow.
+    RangeError.checkValueInInterval(months, -_maxRolloverMonth, _maxRolloverMonth, 'months');
     final firstDay = Date.rollover(year, month + months, 1);
     final lastDay = firstDay.daysInMonth;
     return Date._(firstDay.year, firstDay.month, day > lastDay ? lastDay : day);
@@ -163,7 +181,14 @@ final class Date implements Comparable<Date> {
   /// Returns this date plus [years] years (minus if negative).
   ///
   /// The day is clamped like [addMonths]: `Date(2024, 2, 29).addYears(1)` is 2025-02-28.
-  Date addYears(int years) => addMonths(years * 12);
+  ///
+  /// Throws an [ArgumentError] if the resulting year is out of the supported range (years 1 to 9999).
+  Date addYears(int years) {
+    // Checked before the multiplication, which could overflow.
+    const maxYears = _maxRolloverMonth ~/ DateTime.monthsPerYear;
+    RangeError.checkValueInInterval(years, -maxYears, maxYears, 'years');
+    return addMonths(years * DateTime.monthsPerYear);
+  }
 
   /// The number of days from [other] to this date: positive if this date is after [other].
   int daysSince(Date other) => epochDay - other.epochDay;
@@ -236,12 +261,16 @@ final class Date implements Comparable<Date> {
   /// Whether this date is after or the same day as [other].
   bool isAfterOrSame(Date other) => compareTo(other) >= 0;
 
+  /// Same as [isBefore].
   bool operator <(Date other) => isBefore(other);
 
+  /// Same as [isBeforeOrSame].
   bool operator <=(Date other) => isBeforeOrSame(other);
 
+  /// Same as [isAfter].
   bool operator >(Date other) => isAfter(other);
 
+  /// Same as [isAfterOrSame].
   bool operator >=(Date other) => isAfterOrSame(other);
 
   @override

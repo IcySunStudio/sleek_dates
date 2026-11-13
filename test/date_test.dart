@@ -3,6 +3,11 @@ import 'dart:collection';
 import 'package:sleek_dates/sleek_dates.dart';
 import 'package:test/test.dart';
 
+// The int bounds on native platforms, whose abs(), additions and multiplications overflow. Written as expressions, as
+// they can't be integer literals on the web, where they become doubles that are just as out of range.
+const minInt = -0x8000000000000000;
+const maxInt = -(minInt + 1);
+
 void main() {
   group('Date()', () {
     test('creates valid dates', () {
@@ -86,6 +91,14 @@ void main() {
       expect(() => Date.rollover(2026, 1, 1000000000000), throwsArgumentError);
       expect(() => Date.rollover(1000000, 1, 1), throwsArgumentError);
       expect(() => Date.rollover(2026, -1000000000, 1), throwsArgumentError);
+    });
+
+    test('rejects the int bounds instead of overflowing', () {
+      for (final value in [minInt, maxInt]) {
+        expect(() => Date.rollover(value, 1, 1), throwsArgumentError, reason: '$value');
+        expect(() => Date.rollover(2026, value, 1), throwsArgumentError, reason: '$value');
+        expect(() => Date.rollover(2026, 1, value), throwsArgumentError, reason: '$value');
+      }
     });
   });
 

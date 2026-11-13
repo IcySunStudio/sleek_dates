@@ -13,7 +13,7 @@ A sleek, pure-Dart `Date` and `Time` type: a calendar day and a time of day, wit
 | **Reliable calendar math** | Days, months and years arithmetic computed in UTC: exact across daylight saving time changes |
 | **Month-end aware** | `addMonths` clamps to the end of the month: January 31st + 1 month = February 28th |
 | **Weeks and months** | First/last day of month or week, next/previous weekday, day of year, days between two dates |
-| **JSON ready** | `toJson` / `fromJson` as strict ISO 8601 strings (`2026-03-21`, `18:30`) |
+| **JSON ready** | `toJson` / `fromJson` as strict ISO 8601 strings (`2026-03-21`, `18:30:00`) |
 | **`DateTime` interop** | `toDate()`, `toTime()` and `Date.toDateTime(...)`, plus handy comparison helpers on `DateTime` |
 | **Null-aware friendly** | Named comparison methods (`isAfterOrSame`, ...) work with `?.`, unlike operators |
 
@@ -21,7 +21,7 @@ A sleek, pure-Dart `Date` and `Time` type: a calendar day and a time of day, wit
 
 ```yaml
 dependencies:
-  sleek_dates: ^0.0.1
+  sleek_dates: ^1.0.0
 ```
 
 ## Usage
@@ -41,7 +41,7 @@ date.weekday;                        // Weekday.saturday
 date.dayOfYear;                      // 80
 date.daysInMonth;                    // 31
 date.isLeapYear;                     // false
-date.isToday;
+date.isToday;                        // also isYesterday, isTomorrow
 
 // Arithmetic
 date.addDays(10);                    // 2026-03-31
@@ -50,6 +50,7 @@ Date(2026, 1, 31).addMonths(1);      // 2026-02-28 (clamped to the end of the mo
 Date(2024, 2, 29).addYears(1);       // 2025-02-28
 date.daysUntil(Date(2026, 4, 1));    // 11
 date.daysSince(Date(2026, 3, 1));    // 20
+date.epochDay;                       // 20533 (days since 1970-01-01, Date.fromEpochDay(20533) for the reverse)
 
 // Months and weeks
 date.firstDayOfMonth;                // 2026-03-01
@@ -90,10 +91,11 @@ Both types parse and print strict ISO 8601 strings, and expose `toJson()` / `fro
 Date.parse('2026-03-21');            // throws FormatException on any other format
 Date.tryParse('21/03/2026');         // null
 Date.tryParse('2026-02-30');         // null (the date doesn't exist)
-Time.parse('18:30');                 // also accepts 'HH:mm:ss'
+Time.parse('18:30');                 // also accepts 'HH:mm:ss', and truncates fractional seconds ('18:30:15.250')
 
 Date(2026, 3, 21).toJson();          // '2026-03-21'
 Date.fromJson('2026-03-21');
+Time(18, 30).toJson();               // '18:30:00': seconds are always included, as RFC 3339 `partial-time` (OpenAPI `format: time-local`) requires
 ```
 
 ### DateTime interop

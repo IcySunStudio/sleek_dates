@@ -1,6 +1,11 @@
 import 'package:sleek_dates/sleek_dates.dart';
 import 'package:test/test.dart';
 
+// The int bounds on native platforms, whose abs(), additions and multiplications overflow. Written as expressions, as
+// they can't be integer literals on the web, where they become doubles that are just as out of range.
+const minInt = -0x8000000000000000;
+const maxInt = -(minInt + 1);
+
 void main() {
   group('addDays', () {
     test('adds and subtracts days', () {
@@ -28,6 +33,11 @@ void main() {
       expect(() => Date(9999, 12, 31).addDays(1), throwsArgumentError);
       expect(() => Date(1, 1, 1).addDays(-1), throwsArgumentError);
       expect(() => Date(2026, 1, 1).addDays(1000000000000), throwsArgumentError);
+    });
+
+    test('rejects the int bounds instead of overflowing', () {
+      expect(() => Date(2026, 1, 1).addDays(maxInt), throwsArgumentError);
+      expect(() => Date(2026, 1, 1).addDays(minInt), throwsArgumentError);
     });
 
     test('spans the whole supported range', () {
@@ -74,6 +84,11 @@ void main() {
       expect(() => Date(2026, 1, 1).addMonths(-1000000000), throwsArgumentError);
     });
 
+    test('rejects the int bounds instead of overflowing', () {
+      expect(() => Date(2026, 12, 1).addMonths(maxInt), throwsArgumentError);
+      expect(() => Date(2026, 1, 1).addMonths(minInt), throwsArgumentError);
+    });
+
     test('spans the whole supported range', () {
       expect(Date(1, 1, 1).addMonths(119987), Date(9999, 12, 1));
       expect(Date(9999, 12, 1).addMonths(-119987), Date(1, 1, 1));
@@ -90,6 +105,19 @@ void main() {
       expect(Date(2024, 2, 29).addYears(1), Date(2025, 2, 28));
       expect(Date(2024, 2, 29).addYears(4), Date(2028, 2, 29));
       expect(Date(2024, 2, 29).addYears(-1), Date(2023, 2, 28));
+    });
+
+    test('rejects a resulting year out of range', () {
+      expect(() => Date(9999, 1, 1).addYears(1), throwsArgumentError);
+      expect(() => Date(1, 12, 31).addYears(-1), throwsArgumentError);
+      expect(() => Date(2026, 1, 1).addYears(1000000000), throwsArgumentError);
+    });
+
+    test('rejects the int bounds instead of overflowing', () {
+      expect(() => Date(2026, 1, 1).addYears(maxInt), throwsArgumentError);
+      expect(() => Date(2026, 1, 1).addYears(minInt), throwsArgumentError);
+      // Multiplied by 12, it wraps around to 0 on native platforms.
+      expect(() => Date(2026, 1, 1).addYears(0x4000000000000000), throwsArgumentError);
     });
   });
 
@@ -159,11 +187,32 @@ void main() {
         epochDay++;
 
         expect(date.epochDay, epochDay, reason: '$date');
+        expect(Date.fromEpochDay(epochDay), date, reason: '$date');
         expect(date.year, dateTime.year, reason: '$date');
         expect(date.month, dateTime.month, reason: '$date');
         expect(date.day, dateTime.day, reason: '$date');
         expect(date.weekday.number, dateTime.weekday, reason: '$date');
       }
+    });
+  });
+
+  group('Date.fromEpochDay', () {
+    test('is relative to 1970-01-01', () {
+      expect(Date.fromEpochDay(0), Date(1970, 1, 1));
+      expect(Date.fromEpochDay(-1), Date(1969, 12, 31));
+      expect(Date.fromEpochDay(10957), Date(2000, 1, 1));
+    });
+
+    test('spans the whole supported range', () {
+      expect(Date.fromEpochDay(Date(1, 1, 1).epochDay), Date(1, 1, 1));
+      expect(Date.fromEpochDay(Date(9999, 12, 31).epochDay), Date(9999, 12, 31));
+    });
+
+    test('rejects a resulting year out of range', () {
+      expect(() => Date.fromEpochDay(Date(1, 1, 1).epochDay - 1), throwsArgumentError);
+      expect(() => Date.fromEpochDay(Date(9999, 12, 31).epochDay + 1), throwsArgumentError);
+      expect(() => Date.fromEpochDay(maxInt), throwsArgumentError);
+      expect(() => Date.fromEpochDay(minInt), throwsArgumentError);
     });
   });
 
@@ -323,6 +372,16 @@ void main() {
       expect(today.isYesterday, isFalse);
       expect(today.addDays(1).isYesterday, isFalse);
       expect(today.addDays(-2).isYesterday, isFalse);
+    });
+  });
+
+  group('isTomorrow', () {
+    test('is true only for the day after today', () {
+      final today = Date.today();
+      expect(today.addDays(1).isTomorrow, isTrue);
+      expect(today.isTomorrow, isFalse);
+      expect(today.addDays(-1).isTomorrow, isFalse);
+      expect(today.addDays(2).isTomorrow, isFalse);
     });
   });
 }
