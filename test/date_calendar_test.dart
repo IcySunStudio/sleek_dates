@@ -25,8 +25,14 @@ void main() {
     });
 
     test('rejects a resulting year out of range', () {
-      expect(() => Date(Date.maxYear, 12, 31).addDays(1), throwsArgumentError);
-      expect(() => Date(Date.minYear, 1, 1).addDays(-1), throwsArgumentError);
+      expect(() => Date(9999, 12, 31).addDays(1), throwsArgumentError);
+      expect(() => Date(1, 1, 1).addDays(-1), throwsArgumentError);
+      expect(() => Date(2026, 1, 1).addDays(1000000000000), throwsArgumentError);
+    });
+
+    test('spans the whole supported range', () {
+      expect(Date(1, 1, 1).addDays(3652058), Date(9999, 12, 31));
+      expect(Date(9999, 12, 31).addDays(-3652058), Date(1, 1, 1));
     });
   });
 
@@ -62,9 +68,15 @@ void main() {
     });
 
     test('rejects a resulting year out of range', () {
-      expect(() => Date(Date.maxYear, 12, 1).addMonths(1), throwsArgumentError);
-      expect(() => Date(Date.minYear, 1, 1).addMonths(-1), throwsArgumentError);
+      expect(() => Date(9999, 12, 1).addMonths(1), throwsArgumentError);
+      expect(() => Date(1, 1, 1).addMonths(-1), throwsArgumentError);
       expect(() => Date(2026, 1, 1).addMonths(1000000000), throwsArgumentError);
+      expect(() => Date(2026, 1, 1).addMonths(-1000000000), throwsArgumentError);
+    });
+
+    test('spans the whole supported range', () {
+      expect(Date(1, 1, 1).addMonths(119987), Date(9999, 12, 1));
+      expect(Date(9999, 12, 1).addMonths(-119987), Date(1, 1, 1));
     });
   });
 
@@ -162,7 +174,7 @@ void main() {
       expect(Date(2024, 2, 15).daysInMonth, 29);
       expect(Date(2026, 4, 15).daysInMonth, 30);
       expect(Date(2026, 12, 31).daysInMonth, 31);
-      expect(Date(Date.maxYear, 12, 31).daysInMonth, 31);
+      expect(Date(9999, 12, 31).daysInMonth, 31);
     });
 
     test('isLeapYear', () {

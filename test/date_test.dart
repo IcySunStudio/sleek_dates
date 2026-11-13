@@ -32,10 +32,11 @@ void main() {
     });
 
     test('rejects years out of range', () {
-      expect(Date(Date.minYear, 1, 1).year, Date.minYear);
-      expect(Date(Date.maxYear, 12, 31).year, Date.maxYear);
-      expect(() => Date(Date.minYear - 1, 1, 1), throwsArgumentError);
-      expect(() => Date(Date.maxYear + 1, 1, 1), throwsArgumentError);
+      expect(Date(1, 1, 1).year, 1);
+      expect(Date(9999, 12, 31).year, 9999);
+      expect(() => Date(0, 1, 1), throwsArgumentError);
+      expect(() => Date(10000, 1, 1), throwsArgumentError);
+      expect(() => Date(-5, 1, 1), throwsArgumentError);
     });
   });
 
@@ -48,13 +49,8 @@ void main() {
       expect(Date.tryCreate(2026, 2, 30), isNull);
       expect(Date.tryCreate(2026, 13, 1), isNull);
       expect(Date.tryCreate(0, 1, 1), isNull);
-    });
-  });
-
-  group('Date.unchecked', () {
-    test('is const and keeps its values', () {
-      const date = Date.unchecked(1980, 1, 1);
-      expect(date, Date(1980, 1, 1));
+      expect(Date.tryCreate(2026, 1, 1000000000), isNull);
+      expect(Date.tryCreate(2026, 1000000000, 1), isNull);
     });
   });
 
@@ -81,8 +77,15 @@ void main() {
     });
 
     test('rejects a resulting year out of range', () {
-      expect(() => Date.rollover(Date.maxYear, 12, 32), throwsArgumentError);
-      expect(() => Date.rollover(Date.minYear, 1, 0), throwsArgumentError);
+      expect(() => Date.rollover(9999, 12, 32), throwsArgumentError);
+      expect(() => Date.rollover(1, 1, 0), throwsArgumentError);
+    });
+
+    test('rejects absurdly large values instead of wrapping around', () {
+      expect(() => Date.rollover(2026, 1000000000, 1), throwsArgumentError);
+      expect(() => Date.rollover(2026, 1, 1000000000000), throwsArgumentError);
+      expect(() => Date.rollover(1000000, 1, 1), throwsArgumentError);
+      expect(() => Date.rollover(2026, -1000000000, 1), throwsArgumentError);
     });
   });
 

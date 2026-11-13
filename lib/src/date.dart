@@ -3,7 +3,7 @@ import 'weekday.dart';
 /// A calendar date (year, month, day), without any time of day or time zone.
 ///
 /// Instances are immutable and always represent a date that exists
-/// (e.g. February 30th is rejected), unless created with [Date.unchecked].
+/// (e.g. February 30th is rejected). Years from 1 to 9999 are supported.
 ///
 /// All calendar computations rely on [DateTime.utc], so they never suffer from
 /// daylight saving time changes.
@@ -11,7 +11,7 @@ final class Date implements Comparable<Date> {
   /// Creates a date from its [year], [month] (1-12) and [day] (1-31).
   ///
   /// Throws an [ArgumentError] if the date does not exist, or if [year] is out of
-  /// the [minYear]..[maxYear] range. Use [tryCreate] to get `null` instead, or
+  /// the supported range (years 1 to 9999). Use [tryCreate] to get `null` instead, or
   /// [rollover] to let out-of-range values overflow into the next/previous
   /// month or year.
   factory Date(int year, int month, int day) {
@@ -20,23 +20,18 @@ final class Date implements Comparable<Date> {
     return date;
   }
 
-  /// Creates a date without any validation.
-  ///
-  /// Meant for constants, as it is the only `const` constructor. The caller is
-  /// responsible for passing a date that exists, otherwise the resulting [Date]
-  /// is invalid and its behavior is undefined.
-  const Date.unchecked(this.year, this.month, this.day);
+  /// Creates a date without any validation: the caller must pass a date that exists.
+  const Date._(this.year, this.month, this.day);
 
   /// Creates a date, or returns `null` if the date does not exist or if [year] is
-  /// out of the [minYear]..[maxYear] range.
+  /// out of the supported range (years 1 to 9999).
   static Date? tryCreate(int year, int month, int day) {
-    if (year < minYear || year > maxYear) return null;
+    if (year < _minYear || year > _maxYear || month < 1 || month > 12 || day < 1 || day > 31) return null;
 
-    // DateTime normalizes out-of-range values, so the date exists if nothing moved.
-    final dateTime = DateTime.utc(year, month, day);
-    if (dateTime.year != year || dateTime.month != month || dateTime.day != day) return null;
+    // DateTime normalizes days that do not exist in the month, so the date exists if nothing moved.
+    if (DateTime.utc(year, month, day).month != month) return null;
 
-    return Date.unchecked(year, month, day);
+    return Date._(year, month, day);
   }
 
   /// Creates a date by letting [month] and [day] overflow, like [DateTime] does.
@@ -46,8 +41,14 @@ final class Date implements Comparable<Date> {
   /// - `Date.rollover(2026, 3, 0)` is 2026-02-28 (last day of the previous month).
   /// - `Date.rollover(2026, 14, 1)` is 2027-02-01.
   ///
-  /// Throws an [ArgumentError] if the resulting year is out of the [minYear]..[maxYear] range.
-  factory Date.rollover(int year, int month, int day) => Date.fromDateTime(DateTime.utc(year, month, day));
+  /// Throws an [ArgumentError] if the resulting year is out of the supported range (years 1 to 9999).
+  factory Date.rollover(int year, int month, int day) {
+    // DateTime silently wraps around when given values far beyond its supported range, so reject them upfront.
+    if (year.abs() > _maxRolloverYear || month.abs() > _maxRolloverMonth || day.abs() > _maxRolloverDay) {
+      throw ArgumentError('Value too large: year $year, month $month, day $day');
+    }
+    return Date.fromDateTime(DateTime.utc(year, month, day));
+  }
 
   /// Creates a date from the year, month and day of [dateTime], as they are.
   ///
@@ -55,7 +56,7 @@ final class Date implements Comparable<Date> {
   /// used, and if it is local, the local date is used. Call [DateTime.toLocal]
   /// or [DateTime.toUtc] first to pick another one.
   ///
-  /// Throws an [ArgumentError] if the year is out of the [minYear]..[maxYear] range.
+  /// Throws an [ArgumentError] if the year is out of the supported range (years 1 to 9999).
   factory Date.fromDateTime(DateTime dateTime) => Date(dateTime.year, dateTime.month, dateTime.day);
 
   /// Creates the current date in the local time zone.
@@ -88,11 +89,13 @@ final class Date implements Comparable<Date> {
   /// Throws a [FormatException] if [json] is not a valid date.
   factory Date.fromJson(String json) => Date.parse(json);
 
-  /// Smallest supported year.
-  static const minYear = 1;
+  static const _minYear = 1;
+  static const _maxYear = 9999;
 
-  /// Largest supported year.
-  static const maxYear = 9999;
+  // Limits for [rollover] inputs, keeping the sum of all its parts well below the ~275000 years DateTime supports.
+  static const _maxRolloverYear = 100000;
+  static const _maxRolloverMonth = 1000000;
+  static const _maxRolloverDay = 4000000; // Above the 3.65 million days between years 1 and 9999.
 
   static final _isoFormat = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$');
 
@@ -102,7 +105,7 @@ final class Date implements Comparable<Date> {
         int.parse(match.group(3)!),
       );
 
-  /// The year, between [minYear] and [maxYear].
+  /// The year, from 1 to 9999.
   final int year;
 
   /// The month of the year, from 1 (January) to 12 (December).
@@ -126,7 +129,7 @@ final class Date implements Comparable<Date> {
   bool get isLeapYear => _daysInMonth(year, 2) == 29;
 
   /// The day of the year, from 1 (January 1st) to 365 (366 on leap years).
-  int get dayOfYear => daysSince(Date.unchecked(year, 1, 1)) + 1;
+  int get dayOfYear => daysSince(Date._(year, 1, 1)) + 1;
 
   /// The number of days since 1970-01-01 (negative before that).
   int get epochDay => _utc.millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
@@ -139,7 +142,7 @@ final class Date implements Comparable<Date> {
 
   /// Returns this date plus [days] days (minus if negative).
   ///
-  /// Throws an [ArgumentError] if the resulting year is out of the [minYear]..[maxYear] range.
+  /// Throws an [ArgumentError] if the resulting year is out of the supported range (years 1 to 9999).
   Date addDays(int days) => days == 0 ? this : Date.rollover(year, month, day + days);
 
   /// Returns this date plus [months] months (minus if negative).
@@ -147,17 +150,13 @@ final class Date implements Comparable<Date> {
   /// If the resulting month is shorter than this date's day, the day is clamped to the
   /// last day of the month. For example, `Date(2026, 1, 31).addMonths(1)` is 2026-02-28.
   ///
-  /// Throws an [ArgumentError] if the resulting year is out of the [minYear]..[maxYear] range.
+  /// Throws an [ArgumentError] if the resulting year is out of the supported range (years 1 to 9999).
   Date addMonths(int months) {
     if (months == 0) return this;
 
-    final monthIndex = year * 12 + (month - 1) + months;
-    final newYear = (monthIndex - monthIndex % 12) ~/ 12;
-    final newMonth = monthIndex % 12 + 1;
-    if (newYear < minYear || newYear > maxYear) throw ArgumentError('Resulting year $newYear is out of range');
-
-    final lastDay = _daysInMonth(newYear, newMonth);
-    return Date(newYear, newMonth, day > lastDay ? lastDay : day);
+    final firstDay = Date.rollover(year, month + months, 1);
+    final lastDay = firstDay.daysInMonth;
+    return Date._(firstDay.year, firstDay.month, day > lastDay ? lastDay : day);
   }
 
   /// Returns this date plus [years] years (minus if negative).
@@ -178,10 +177,10 @@ final class Date implements Comparable<Date> {
   bool isAtSameMonthAs(Date other) => isAtSameYearAs(other) && month == other.month;
 
   /// The first day of this date's month.
-  Date get firstDayOfMonth => Date.unchecked(year, month, 1);
+  Date get firstDayOfMonth => Date._(year, month, 1);
 
   /// The last day of this date's month.
-  Date get lastDayOfMonth => Date.unchecked(year, month, daysInMonth);
+  Date get lastDayOfMonth => Date._(year, month, daysInMonth);
 
   /// The first day of the month following this date's month.
   Date get firstDayOfNextMonth => firstDayOfMonth.addMonths(1);
