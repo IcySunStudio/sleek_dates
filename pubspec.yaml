@@ -1,0 +1,12 @@
+name: sleek_dates
+description: A sleek, pure-Dart Date (and Time) type without time zone or time-of-day pitfalls.
+version: 0.0.1
+repository: https://github.com/IcySunStudio/sleek_dates
+issue_tracker: https://github.com/IcySunStudio/sleek_dates/issues
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.32.0
