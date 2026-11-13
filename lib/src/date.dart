@@ -111,11 +111,111 @@ final class Date implements Comparable<Date> {
   /// The day of the month, from 1 to 31.
   final int day;
 
+  /// This date at midnight, in UTC. All calendar computations rely on it, as UTC has no daylight saving time.
+  DateTime get _utc => DateTime.utc(year, month, day);
+
+  static int _daysInMonth(int year, int month) => DateTime.utc(year, month + 1, 0).day;
+
   /// The day of the week.
-  Weekday get weekday => Weekday.fromNumber(DateTime.utc(year, month, day).weekday);
+  Weekday get weekday => Weekday.fromNumber(_utc.weekday);
+
+  /// The number of days in this date's month, from 28 to 31.
+  int get daysInMonth => _daysInMonth(year, month);
+
+  /// Whether this date's year is a leap year.
+  bool get isLeapYear => _daysInMonth(year, 2) == 29;
+
+  /// The day of the year, from 1 (January 1st) to 365 (366 on leap years).
+  int get dayOfYear => daysSince(Date.unchecked(year, 1, 1)) + 1;
+
+  /// The number of days since 1970-01-01 (negative before that).
+  int get epochDay => _utc.millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
 
   /// Whether this date is today, in the local time zone.
   bool get isToday => this == Date.today();
+
+  /// Whether this date is yesterday, in the local time zone.
+  bool get isYesterday => Date.today().daysSince(this) == 1;
+
+  /// Returns this date plus [days] days (minus if negative).
+  ///
+  /// Throws an [ArgumentError] if the resulting year is out of the [minYear]..[maxYear] range.
+  Date addDays(int days) => days == 0 ? this : Date.rollover(year, month, day + days);
+
+  /// Returns this date plus [months] months (minus if negative).
+  ///
+  /// If the resulting month is shorter than this date's day, the day is clamped to the
+  /// last day of the month. For example, `Date(2026, 1, 31).addMonths(1)` is 2026-02-28.
+  ///
+  /// Throws an [ArgumentError] if the resulting year is out of the [minYear]..[maxYear] range.
+  Date addMonths(int months) {
+    if (months == 0) return this;
+
+    final monthIndex = year * 12 + (month - 1) + months;
+    final newYear = (monthIndex - monthIndex % 12) ~/ 12;
+    final newMonth = monthIndex % 12 + 1;
+    if (newYear < minYear || newYear > maxYear) throw ArgumentError('Resulting year $newYear is out of range');
+
+    final lastDay = _daysInMonth(newYear, newMonth);
+    return Date(newYear, newMonth, day > lastDay ? lastDay : day);
+  }
+
+  /// Returns this date plus [years] years (minus if negative).
+  ///
+  /// The day is clamped like [addMonths]: `Date(2024, 2, 29).addYears(1)` is 2025-02-28.
+  Date addYears(int years) => addMonths(years * 12);
+
+  /// The number of days from [other] to this date: positive if this date is after [other].
+  int daysSince(Date other) => epochDay - other.epochDay;
+
+  /// The number of days from this date to [other]: positive if [other] is after this date.
+  int daysUntil(Date other) => other.epochDay - epochDay;
+
+  /// Whether [other] is in the same year as this.
+  bool isAtSameYearAs(Date other) => year == other.year;
+
+  /// Whether [other] is in the same month as this, i.e. the same month of the same year.
+  bool isAtSameMonthAs(Date other) => isAtSameYearAs(other) && month == other.month;
+
+  /// The first day of this date's month.
+  Date get firstDayOfMonth => Date.unchecked(year, month, 1);
+
+  /// The last day of this date's month.
+  Date get lastDayOfMonth => Date.unchecked(year, month, daysInMonth);
+
+  /// The first day of the month following this date's month.
+  Date get firstDayOfNextMonth => firstDayOfMonth.addMonths(1);
+
+  /// The first day of the month preceding this date's month.
+  Date get firstDayOfPreviousMonth => firstDayOfMonth.addMonths(-1);
+
+  /// The first day of this date's week, which starts on [start] (Monday by default).
+  ///
+  /// Returns this date if it is already a [start] day.
+  Date firstDayOfWeek({Weekday start = Weekday.monday}) => previous(start, orSame: true);
+
+  /// The last day of this date's week, which starts on [start] (Monday by default).
+  Date lastDayOfWeek({Weekday start = Weekday.monday}) => firstDayOfWeek(start: start).addDays(DateTime.daysPerWeek - 1);
+
+  /// The first [day] after this date.
+  ///
+  /// If this date is already a [day], it is skipped and the next week's one is returned, unless
+  /// [orSame] is true, in which case this date is returned.
+  Date next(Weekday day, {bool orSame = false}) {
+    var delta = (day.number - weekday.number) % DateTime.daysPerWeek;
+    if (delta == 0 && !orSame) delta = DateTime.daysPerWeek;
+    return addDays(delta);
+  }
+
+  /// The last [day] before this date.
+  ///
+  /// If this date is already a [day], it is skipped and the previous week's one is returned, unless
+  /// [orSame] is true, in which case this date is returned.
+  Date previous(Weekday day, {bool orSame = false}) {
+    var delta = (weekday.number - day.number) % DateTime.daysPerWeek;
+    if (delta == 0 && !orSame) delta = DateTime.daysPerWeek;
+    return addDays(-delta);
+  }
 
   /// Whether this date is strictly before [other].
   bool isBefore(Date other) => compareTo(other) < 0;
