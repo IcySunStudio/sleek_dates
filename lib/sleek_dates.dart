@@ -1,8 +1,7 @@
-/// Support for doing something awesome.
-///
-/// More dartdocs go here.
+/// A sleek, pure-Dart `Date` (and `Time`) type, without time zone or
+/// time-of-day pitfalls.
 library;
 
-export 'src/sleek_dates_base.dart';
-
-// TODO: Export any libraries intended for clients of this package.
+export 'src/date.dart';
+export 'src/date_time_extensions.dart';
+export 'src/weekday.dart';
